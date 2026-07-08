@@ -1,0 +1,10 @@
+root = true
+
+[*.cs]
+indent_style = space
+indent_size = 4
+charset = utf-8
+
+[*.{ts,tsx,js,jsx,json}]
+indent_style = space
+indent_size = 2
