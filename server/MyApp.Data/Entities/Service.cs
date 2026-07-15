@@ -11,6 +11,11 @@ public class Service
     // doing a separate lookup. EF Core fills this in automatically when you ask for it.
     public Category Category { get; set; } = null!;
 
+    // The Provider (User) who owns this agency/offering
+    public Guid ProviderId { get; set; }
+
+    public User Provider { get; set; } = null!;
+
     public string Name { get; set; } = string.Empty;
 
     public string? Description { get; set; }

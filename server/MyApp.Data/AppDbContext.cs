@@ -19,6 +19,12 @@ public class AppDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
+        modelBuilder.Entity<Service>()
+            .HasOne(s => s.Provider)
+            .WithMany()
+            .HasForeignKey(s => s.ProviderId)
+            .OnDelete(DeleteBehavior.Restrict);
+          
         // Enforce uniqueness at the database level, not just in app code
         modelBuilder.Entity<User>()
             .HasIndex(u => u.Email)

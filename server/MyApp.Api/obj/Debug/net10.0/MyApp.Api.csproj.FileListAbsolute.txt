@@ -126,3 +126,12 @@ D:\Jihed\ServicesProject\myapp\server\MyApp.Api\obj\Debug\net10.0\refint\MyApp.A
 D:\Jihed\ServicesProject\myapp\server\MyApp.Api\obj\Debug\net10.0\MyApp.Api.pdb
 D:\Jihed\ServicesProject\myapp\server\MyApp.Api\obj\Debug\net10.0\MyApp.Api.genruntimeconfig.cache
 D:\Jihed\ServicesProject\myapp\server\MyApp.Api\obj\Debug\net10.0\ref\MyApp.Api.dll
+D:\Jihed\ServicesProject\myapp\server\MyApp.Api\bin\Debug\net10.0\BCrypt-Net-Next.dll
+D:\Jihed\ServicesProject\myapp\server\MyApp.Api\bin\Debug\net10.0\Microsoft.AspNetCore.Authentication.JwtBearer.dll
+D:\Jihed\ServicesProject\myapp\server\MyApp.Api\bin\Debug\net10.0\Microsoft.IdentityModel.Abstractions.dll
+D:\Jihed\ServicesProject\myapp\server\MyApp.Api\bin\Debug\net10.0\Microsoft.IdentityModel.JsonWebTokens.dll
+D:\Jihed\ServicesProject\myapp\server\MyApp.Api\bin\Debug\net10.0\Microsoft.IdentityModel.Logging.dll
+D:\Jihed\ServicesProject\myapp\server\MyApp.Api\bin\Debug\net10.0\Microsoft.IdentityModel.Protocols.dll
+D:\Jihed\ServicesProject\myapp\server\MyApp.Api\bin\Debug\net10.0\Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
+D:\Jihed\ServicesProject\myapp\server\MyApp.Api\bin\Debug\net10.0\Microsoft.IdentityModel.Tokens.dll
+D:\Jihed\ServicesProject\myapp\server\MyApp.Api\bin\Debug\net10.0\System.IdentityModel.Tokens.Jwt.dll
