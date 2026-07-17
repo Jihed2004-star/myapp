@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using MyApp.Data;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -12,9 +13,11 @@ using NpgsqlTypes;
 namespace MyApp.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260715080929_UpdateServiceAndElementFields")]
+    partial class UpdateServiceAndElementFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -22,28 +25,6 @@ namespace MyApp.Data.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
-
-            modelBuilder.Entity("MyApp.Data.Entities.Availability", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("ElementId")
-                        .HasColumnType("uuid");
-
-                    b.Property<NpgsqlRange<DateTime>>("TimeRange")
-                        .HasColumnType("tstzrange");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ElementId");
-
-                    b.ToTable("Availabilities");
-                });
 
             modelBuilder.Entity("MyApp.Data.Entities.Booking", b =>
                 {
@@ -102,10 +83,6 @@ namespace MyApp.Data.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
-
-                    b.Property<string>("Attributes")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -195,17 +172,6 @@ namespace MyApp.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("Users");
-                });
-
-            modelBuilder.Entity("MyApp.Data.Entities.Availability", b =>
-                {
-                    b.HasOne("MyApp.Data.Entities.Element", "Element")
-                        .WithMany()
-                        .HasForeignKey("ElementId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Element");
                 });
 
             modelBuilder.Entity("MyApp.Data.Entities.Booking", b =>

@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using MyApp.Api.DTOs;
 using MyApp.Data;
 using MyApp.Data.Entities;
+using System.Security.Claims;
 
 namespace MyApp.Api.Controllers;
 
@@ -62,13 +63,15 @@ public class ServicesController : ControllerBase
             return BadRequest(new { message = "CategoryId does not reference an existing category." });
         }
 
+        var providerId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                             ?? User.FindFirst("sub")!.Value);
+
         var service = new Service
         {
             CategoryId = request.CategoryId,
+            ProviderId = providerId,
             Name = request.Name,
             Description = request.Description,
-            DurationMinutes = request.DurationMinutes,
-            Price = request.Price,
             IsActive = request.IsActive
         };
 
@@ -85,6 +88,9 @@ public class ServicesController : ControllerBase
     [HttpPut("{id}")]
     public async Task<ActionResult<ServiceResponse>> Update(Guid id, ServiceRequest request)
     {
+
+
+        
         var service = await _context.Services
             .Include(s => s.Category)
             .Include(s => s.Elements)
@@ -94,7 +100,15 @@ public class ServicesController : ControllerBase
         {
             return NotFound(new { message = "Service not found." });
         }
+        
+        var currentUserId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                                ?? User.FindFirst("sub")!.Value);
+        var isAdmin = User.IsInRole("Admin");
 
+        if (!isAdmin && service.ProviderId != currentUserId)
+        {
+            return Forbid();
+        }
         var categoryExists = await _context.Categories.AnyAsync(c => c.Id == request.CategoryId);
         if (!categoryExists)
         {
@@ -104,8 +118,6 @@ public class ServicesController : ControllerBase
         service.CategoryId = request.CategoryId;
         service.Name = request.Name;
         service.Description = request.Description;
-        service.DurationMinutes = request.DurationMinutes;
-        service.Price = request.Price;
         service.IsActive = request.IsActive;
 
         await _context.SaveChangesAsync();
@@ -123,7 +135,14 @@ public class ServicesController : ControllerBase
         {
             return NotFound(new { message = "Service not found." });
         }
+        var currentUserId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                                        ?? User.FindFirst("sub")!.Value);
+        var isAdmin = User.IsInRole("Admin");
 
+        if (!isAdmin && service.ProviderId != currentUserId)
+        {
+            return Forbid();
+        }
         _context.Services.Remove(service);
         await _context.SaveChangesAsync();
 
@@ -134,11 +153,10 @@ public class ServicesController : ControllerBase
     {
         Id = s.Id,
         CategoryId = s.CategoryId,
+        ProviderId = s.ProviderId,
         CategoryName = s.Category.Name,
         Name = s.Name,
         Description = s.Description,
-        DurationMinutes = s.DurationMinutes,
-        Price = s.Price,
         IsActive = s.IsActive,
         CreatedAt = s.CreatedAt,
         Elements = s.Elements.Select(e => new ElementResponse
@@ -146,7 +164,7 @@ public class ServicesController : ControllerBase
             Id = e.Id,
             Name = e.Name,
             OrderIndex = e.OrderIndex,
-            ExtraPrice = e.ExtraPrice
+            Price = e.Price
         }).ToList()
     };
 }
