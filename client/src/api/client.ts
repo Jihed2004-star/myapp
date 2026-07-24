@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const apiClient = axios.create({
-  baseURL: 'http://localhost:5294/api', // adjust to match your dotnet run port
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5294/api',
 });
 
 // Runs before every request - attaches the JWT automatically if we have one

@@ -20,6 +20,17 @@ public class AppDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+
+        modelBuilder.Entity<Service>()
+            .Property(s => s.BookingUnit)
+            .HasConversion<string>(); 
+        
+        modelBuilder.Entity<Category>()
+            .Property(c => c.IsActive)
+            .HasDefaultValue(true);
+
+            
         modelBuilder.Entity<Availability>()
             .HasOne(a => a.Element)
             .WithMany()
@@ -33,6 +44,10 @@ public class AppDbContext : DbContext
                 v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
                 v => JsonSerializer.Deserialize<Dictionary<string, string>>(v, (JsonSerializerOptions?)null) ?? new Dictionary<string, string>()
     );
+      modelBuilder.Entity<Element>()
+              .Property(e => e.IsActive)
+              .HasDefaultValue(true);
+              
         modelBuilder.Entity<Service>()
             .HasOne(s => s.Provider)
             .WithMany()

@@ -14,8 +14,10 @@ public class Element
     public int OrderIndex { get; set; }
 
     public decimal Price { get; set; }
+    
 
     // Flexible schema-less key/value data, varies per Category/Service type
     // (e.g. { "color": "Red", "seats": "5" } for a car, { "specialty": "..." } for a stylist)
     public Dictionary<string, string> Attributes { get; set; } = new();
+    public bool IsActive { get; set; } = true;
 }

@@ -42,9 +42,25 @@ public class BookingsController : ControllerBase
 
         var requestedRange = new NpgsqlRange<DateTime>(request.StartTime, true, request.EndTime, false);
 
-        var isWithinAvailability = await _context.Availabilities
-            .Where(a => a.ElementId == request.ElementId)
-            .AnyAsync(a => a.TimeRange.Contains(requestedRange));
+      var overlapping = await _context.Availabilities
+            .Where(a => a.ElementId == request.ElementId && a.TimeRange.Overlaps(requestedRange))
+            .OrderBy(a => a.TimeRange.LowerBound)
+            .ToListAsync();
+
+        var coveredUpTo = requestedRange.LowerBound;
+        foreach (var a in overlapping)
+        {
+            if (a.TimeRange.LowerBound > coveredUpTo)
+            {
+                break; // gap in coverage — stop, whatever we've covered so far is final
+            }
+            if (a.TimeRange.UpperBound > coveredUpTo)
+            {
+                coveredUpTo = a.TimeRange.UpperBound;
+            }
+        }
+
+        var isWithinAvailability = coveredUpTo >= requestedRange.UpperBound;
 
         if (!isWithinAvailability)
         {
@@ -86,6 +102,50 @@ public class BookingsController : ControllerBase
 
         return Ok(bookings.Select(b => MapToResponse(b, b.Element)).ToList());
     }
+
+    [AllowAnonymous]
+    [HttpGet("by-element/{elementId}")]
+    public async Task<ActionResult<List<BookedRangeResponse>>> GetByElement(Guid elementId)
+    {
+        var ranges = await _context.Bookings
+            .Where(b => b.ElementId == elementId && b.Status == "Confirmed")
+            .Select(b => new BookedRangeResponse
+            {
+                StartTime = b.TimeRange.LowerBound,
+                EndTime = b.TimeRange.UpperBound
+            })
+            .ToListAsync();
+
+        return Ok(ranges);
+    }
+
+
+      [HttpGet("for-provider/{elementId}")]
+    public async Task<ActionResult<List<BookingResponse>>> GetForProvider(Guid elementId)
+    {
+        var element = await _context.Elements
+            .Include(e => e.Service)
+            .FirstOrDefaultAsync(e => e.Id == elementId);
+
+        if (element is null)
+        {
+            return NotFound(new { message = "Element not found." });
+        }
+
+        if (!User.IsInRole("Admin") && element.Service.ProviderId != GetCurrentUserId())
+        {
+            return Forbid();
+        }
+
+        var bookings = await _context.Bookings
+            .Include(b => b.Element).ThenInclude(e => e.Service)
+            .Where(b => b.ElementId == elementId)
+            .OrderByDescending(b => b.TimeRange)
+            .ToListAsync();
+
+        return Ok(bookings.Select(b => MapToResponse(b, b.Element)).ToList());
+    }
+
 
     [HttpGet("{id}")]
     public async Task<ActionResult<BookingResponse>> GetById(Guid id)

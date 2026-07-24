@@ -1,1 +1,27 @@
 @import "tailwindcss";
+.fc-dark-theme {
+  --fc-border-color: #334155;           /* slate-700 */
+  --fc-page-bg-color: transparent;
+  --fc-neutral-bg-color: #1e293b;       /* slate-800 */
+  --fc-neutral-text-color: #e2e8f0;     /* slate-200 */
+  --fc-today-bg-color: rgba(59, 130, 246, 0.08);
+  --fc-event-text-color: #ffffff;
+  --fc-button-bg-color: #334155;
+  --fc-button-border-color: #475569;
+  --fc-button-hover-bg-color: #475569;
+  --fc-button-hover-border-color: #64748b;
+  --fc-button-active-bg-color: #2563eb;
+  font-family: inherit;
+}
+
+.fc-dark-theme .fc-col-header-cell-cushion,
+.fc-dark-theme .fc-daygrid-day-number,
+.fc-dark-theme .fc-timegrid-slot-label-cushion,
+.fc-dark-theme .fc-toolbar-title {
+  color: #e2e8f0;
+}
+
+.fc-dark-theme .fc-daygrid-day.fc-day-today,
+.fc-dark-theme .fc-timegrid-col.fc-day-today {
+  background-color: rgba(59, 130, 246, 0.08);
+}

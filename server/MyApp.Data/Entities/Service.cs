@@ -22,6 +22,9 @@ public class Service
 
     public bool IsActive { get; set; } = true;
 
+    // Controls how the frontend calendar presents booking (hourly slots vs day/month ranges)
+    public BookingUnit BookingUnit { get; set; } = BookingUnit.Hourly;
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation property for the "many" side — one Service can have many Elements

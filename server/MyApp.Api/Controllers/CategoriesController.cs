@@ -22,12 +22,32 @@ public class CategoriesController : ControllerBase
     public async Task<ActionResult<List<CategoryResponse>>> GetAll()
     {
         var categories = await _context.Categories
+            .Where(c => c.IsActive)
             .Select(c => new CategoryResponse
             {
                 Id = c.Id,
                 Name = c.Name,
                 Description = c.Description,
-                CreatedAt = c.CreatedAt
+                CreatedAt = c.CreatedAt,
+                IsActive = c.IsActive
+            })
+            .ToListAsync();
+
+        return Ok(categories);
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpGet("all")]
+    public async Task<ActionResult<List<CategoryResponse>>> GetAllIncludingInactive()
+    {
+        var categories = await _context.Categories
+            .Select(c => new CategoryResponse
+            {
+                Id = c.Id,
+                Name = c.Name,
+                Description = c.Description,
+                CreatedAt = c.CreatedAt,
+                IsActive = c.IsActive
             })
             .ToListAsync();
 
@@ -103,6 +123,29 @@ public class CategoriesController : ControllerBase
     }
 
     [Authorize(Roles = "Admin")]
+    [HttpPatch("{id}/toggle-active")]
+    public async Task<ActionResult<CategoryResponse>> ToggleActive(Guid id)
+    {
+        var category = await _context.Categories.FindAsync(id);
+        if (category is null)
+        {
+            return NotFound(new { message = "Category not found." });
+        }
+
+        category.IsActive = !category.IsActive;
+        await _context.SaveChangesAsync();
+
+        return Ok(new CategoryResponse
+        {
+            Id = category.Id,
+            Name = category.Name,
+            Description = category.Description,
+            CreatedAt = category.CreatedAt,
+            IsActive = category.IsActive
+        });
+    }
+    
+    [Authorize(Roles = "Admin")]
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id)
     {
@@ -114,8 +157,21 @@ public class CategoriesController : ControllerBase
         }
 
         _context.Categories.Remove(category);
-        await _context.SaveChangesAsync();
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (IsForeignKeyViolation(ex))
+        {
+            return Conflict(new { message = "Cannot delete this category while services reference it." });
+        }
 
         return NoContent();
+    }
+
+    private static bool IsForeignKeyViolation(DbUpdateException ex)
+    {
+        return ex.InnerException is Npgsql.PostgresException pgEx && (pgEx.SqlState == "23503" || pgEx.SqlState == "23001");
     }
 }

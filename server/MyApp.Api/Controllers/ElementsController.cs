@@ -22,7 +22,10 @@ public class ElementsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<List<ElementResponse>>> GetAll([FromQuery] Guid? serviceId)
     {
-        var query = _context.Elements.AsQueryable();
+        var query = _context.Elements
+            .Include(e => e.Service)
+            .Where(e => e.IsActive && e.Service.IsActive)
+            .AsQueryable();
 
         if (serviceId.HasValue)
         {
@@ -37,19 +40,28 @@ public class ElementsController : ControllerBase
         return Ok(elements);
     }
 
+    [AllowAnonymous]
     [HttpGet("{id}")]
     public async Task<ActionResult<ElementResponse>> GetById(Guid id)
     {
-        var element = await _context.Elements.FindAsync(id);
+        var element = await _context.Elements
+            .Include(e => e.Service)
+            .FirstOrDefaultAsync(e => e.Id == id);
 
         if (element is null)
         {
             return NotFound(new { message = "Element not found." });
         }
 
+        var isInactive = !element.IsActive || !element.Service.IsActive;
+
+        if (isInactive && !IsOwnerOrAdminIfAuthenticated(element.Service.ProviderId))
+        {
+            return NotFound(new { message = "Element not found." });
+        }
+
         return Ok(MapToResponse(element));
     }
-
     [Authorize(Roles = "Provider,Admin")]
     [HttpPost]
     public async Task<ActionResult<ElementResponse>> Create(ElementRequest request)
@@ -76,7 +88,7 @@ public class ElementsController : ControllerBase
 
         _context.Elements.Add(element);
         await _context.SaveChangesAsync();
-
+        await _context.Entry(element).Reference(e => e.Service).LoadAsync();
         return CreatedAtAction(nameof(GetById), new { id = element.Id }, MapToResponse(element));
     }
 
@@ -108,6 +120,33 @@ public class ElementsController : ControllerBase
         return Ok(MapToResponse(element));
     }
 
+
+
+
+    [Authorize(Roles = "Provider,Admin")]
+    [HttpPatch("{id}/toggle-active")]
+    public async Task<ActionResult<ElementResponse>> ToggleActive(Guid id)
+    {
+        var element = await _context.Elements
+            .Include(e => e.Service)
+            .FirstOrDefaultAsync(e => e.Id == id);
+
+        if (element is null)
+        {
+            return NotFound(new { message = "Element not found." });
+        }
+
+        if (!IsOwnerOrAdmin(element.Service.ProviderId))
+        {
+            return Forbid();
+        }
+
+        element.IsActive = !element.IsActive;
+        await _context.SaveChangesAsync();
+
+        return Ok(MapToResponse(element));
+    }
+
     [Authorize(Roles = "Provider,Admin")]
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id)
@@ -127,10 +166,26 @@ public class ElementsController : ControllerBase
         }
 
         _context.Elements.Remove(element);
-        await _context.SaveChangesAsync();
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (IsForeignKeyViolation(ex))
+        {
+            return Conflict(new { message = "Cannot delete this element while it has booking history." });
+        }
 
         return NoContent();
     }
+
+    private static bool IsForeignKeyViolation(DbUpdateException ex)
+    {
+        // Postgres SQLSTATE 23503 = foreign_key_violation
+        return ex.InnerException is Npgsql.PostgresException pgEx  && (pgEx.SqlState == "23503" || pgEx.SqlState == "23001");
+    }
+
+    
 
     private bool IsOwnerOrAdmin(Guid ownerProviderId)
     {
@@ -144,13 +199,32 @@ public class ElementsController : ControllerBase
 
         return currentUserId == ownerProviderId;
     }
+  private bool IsOwnerOrAdminIfAuthenticated(Guid ownerProviderId)
+    {
+        if (User.Identity?.IsAuthenticated != true)
+        {
+            return false;
+        }
 
+        if (User.IsInRole("Admin"))
+        {
+            return true;
+        }
+
+        var currentUserId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                                        ?? User.FindFirst("sub")!.Value);
+
+        return currentUserId == ownerProviderId;
+    }
     private static ElementResponse MapToResponse(Element e) => new()
     {
         Id = e.Id,
+        ServiceId = e.ServiceId,
         Name = e.Name,
         OrderIndex = e.OrderIndex,
         Price = e.Price,
-        Attributes = e.Attributes
+        Attributes = e.Attributes,
+        BookingUnit = e.Service.BookingUnit,
+        IsActive = e.IsActive,
     };
 }

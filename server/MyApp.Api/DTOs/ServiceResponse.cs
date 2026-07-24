@@ -1,5 +1,7 @@
 namespace MyApp.Api.DTOs;
 
+using MyApp.Data.Entities;
+
 public class ServiceResponse
 {
     public Guid Id { get; set; }
@@ -10,5 +12,6 @@ public class ServiceResponse
     public string? Description { get; set; }
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
+    public BookingUnit BookingUnit { get; set; }
     public List<ElementResponse> Elements { get; set; } = new();
 }
