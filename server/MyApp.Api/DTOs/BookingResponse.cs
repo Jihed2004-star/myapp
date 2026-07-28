@@ -10,4 +10,6 @@ public class BookingResponse
     public DateTime EndTime { get; set; }
     public string Status { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
+    public bool HasReview { get; set; }
+    public string ClientName { get; set; } = string.Empty;
 }

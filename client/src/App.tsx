@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import Login from './pages/Login';
@@ -16,9 +16,11 @@ import UserManagement from './pages/UserManagement';
 import CategoryManagement from './pages/CategoryManagement';
 
 function App() {
+  const location = useLocation();
+  const hideNavbar = location.pathname === '/login' || location.pathname === '/register';
   return (
     <div className="min-h-screen bg-slate-950">
-      <Navbar />
+      {!hideNavbar && <Navbar />}
 
       <Routes>
         <Route path="/" element={<Home />} />
@@ -37,7 +39,9 @@ function App() {
         <Route path="/admin/categories" element={<CategoryManagement />} />
       </Routes>
     </div>
+    
   );
+  
 }
 
 export default App;

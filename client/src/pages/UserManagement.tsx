@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getAllUsers, updateUserRole } from '../api/users';
 import { useAuth } from '../context/AuthContext';
+import { ListRowSkeletonGroup } from '../components/ui/ListRowSkeleton';
+import Footer from '../components/Footer';
 
 const ROLES = ['Customer', 'Provider', 'Admin'];
 
@@ -28,42 +30,65 @@ export default function UserManagement() {
   });
 
   if (!user || user.role !== 'Admin') {
-    return <div className="text-white p-6"><p className="text-slate-400">You don't have access to this page.</p></div>;
+    return (
+      <div className="min-h-screen bg-white">
+        <div className="mx-auto max-w-3xl px-4 py-16 text-center sm:px-6">
+          <p className="text-slate-500">You don't have access to this page.</p>
+        </div>
+        <Footer />
+      </div>
+    );
   }
 
-  if (isLoading) return <p className="text-white p-6">Loading...</p>;
-  if (error) return <p className="text-white p-6">Failed to load users.</p>;
-
   return (
-    <div className="text-white p-6 max-w-3xl">
-      <h1 className="text-2xl font-bold mb-6">User Management</h1>
+    <div className="min-h-screen bg-white">
+      <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
+        <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">User Management</h1>
 
-      {roleError && <p className="text-amber-500 text-sm mb-4">{roleError}</p>}
+        {roleError && <p className="mt-4 text-sm text-amber-600">{roleError}</p>}
 
-      <div className="space-y-2">
-        {users?.map((u) => (
-          <div
-            key={u.id}
-            className="bg-slate-900 border border-slate-800 rounded-lg p-4 flex justify-between items-center"
-          >
-            <div>
-              <p className="font-semibold">{u.fullName}</p>
-              <p className="text-slate-400 text-sm">{u.email}</p>
+        <div className="mt-8">
+          {isLoading && <ListRowSkeletonGroup count={4} />}
+
+          {error && (
+            <div className="rounded-2xl border border-rose-200 bg-rose-50 px-6 py-10 text-center">
+              <p className="font-semibold text-rose-700">Couldn't load users</p>
+              <p className="mt-1 text-sm text-rose-500">
+                Something went wrong on our end — try refreshing the page.
+              </p>
             </div>
+          )}
 
-            <select
-              value={u.role}
-              onChange={(e) => mutation.mutate({ id: u.id, role: e.target.value })}
-              disabled={mutation.isPending}
-              className="bg-slate-800/50 border border-slate-800 rounded-lg px-3 py-1.5 text-sm disabled:opacity-50"
-            >
-              {ROLES.map((r) => (
-                <option key={r} value={r}>{r}</option>
+          {!isLoading && !error && (
+            <div className="space-y-3">
+              {users?.map((u) => (
+                <div
+                  key={u.id}
+                  className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+                >
+                  <div>
+                    <p className="font-semibold text-slate-900">{u.fullName}</p>
+                    <p className="text-sm text-slate-500">{u.email}</p>
+                  </div>
+
+                  <select
+                    value={u.role}
+                    onChange={(e) => mutation.mutate({ id: u.id, role: e.target.value })}
+                    disabled={mutation.isPending}
+                    className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 disabled:opacity-50"
+                  >
+                    {ROLES.map((r) => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </select>
+                </div>
               ))}
-            </select>
-          </div>
-        ))}
+            </div>
+          )}
+        </div>
       </div>
+
+      <Footer />
     </div>
   );
 }

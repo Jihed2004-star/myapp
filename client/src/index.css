@@ -25,3 +25,37 @@
 .fc-dark-theme .fc-timegrid-col.fc-day-today {
   background-color: rgba(59, 130, 246, 0.08);
 }
+
+/* Light theme — used by ElementDetail / ManageElement going forward */
+.fc-light-theme {
+  --fc-border-color: #e2e8f0;           /* slate-200 */
+  --fc-page-bg-color: transparent;
+  --fc-neutral-bg-color: #f8fafc;       /* slate-50 */
+  --fc-neutral-text-color: #334155;     /* slate-700 */
+  --fc-today-bg-color: rgba(79, 70, 229, 0.06);
+  --fc-event-text-color: #ffffff;
+  --fc-button-bg-color: #4f46e5;        /* indigo-600 */
+  --fc-button-border-color: #4f46e5;
+  --fc-button-hover-bg-color: #4338ca;  /* indigo-700 */
+  --fc-button-hover-border-color: #4338ca;
+  --fc-button-active-bg-color: #4338ca;
+  font-family: inherit;
+}
+
+.fc-light-theme .fc-col-header-cell-cushion,
+.fc-light-theme .fc-daygrid-day-number,
+.fc-light-theme .fc-timegrid-slot-label-cushion,
+.fc-light-theme .fc-toolbar-title {
+  color: #1e293b; /* slate-800 */
+}
+
+.fc-light-theme .fc-daygrid-day.fc-day-today,
+.fc-light-theme .fc-timegrid-col.fc-day-today {
+  background-color: rgba(79, 70, 229, 0.06);
+}
+
+/* Drag-to-select highlight (interactionPlugin) — shown while dragging on the
+   calendar, before a booking is confirmed. */
+.fc-light-theme .fc-highlight {
+  background: rgba(79, 70, 229, 0.18); /* indigo-600 @ 18% */
+}

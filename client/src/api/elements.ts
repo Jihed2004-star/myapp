@@ -43,6 +43,17 @@ export interface BookingResponse {
   endTime: string;
   status: string;
   createdAt: string;
+  hasReview: boolean;
+  clientName: string;
+}
+export interface BookingConflict {
+  bookingId: string;
+  startTime: string;
+  endTime: string;
+}
+
+export async function deleteAvailability(id: string): Promise<void> {
+  await apiClient.delete(`/availability/${id}`);
 }
 
 export async function createBooking(data: BookingRequest): Promise<BookingResponse> {

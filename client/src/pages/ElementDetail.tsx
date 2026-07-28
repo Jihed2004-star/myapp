@@ -1,13 +1,18 @@
 import { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getElementById, getAvailability, getBookedRanges, createBooking } from '../api/elements';
+import { getReviewsByElement, getRatingSummary } from '../api/reviews';
 import { useAuth } from '../context/AuthContext';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import type { DateSelectArg } from '@fullcalendar/core';
+import { StatusBadge } from '../components/ui/Badge';
+import { TagIcon } from '../components/ui/TagIcon';
+import { CardSkeletonGrid } from '../components/ui/CardSkeleton';
+import Footer from '../components/Footer';
 import '../index.css';
 
 export default function ElementDetail() {
@@ -31,9 +36,22 @@ export default function ElementDetail() {
     queryFn: () => getAvailability(id!),
     enabled: !!id,
   });
+
   const { data: bookedRanges } = useQuery({
     queryKey: ['bookedRanges', id],
     queryFn: () => getBookedRanges(id!),
+    enabled: !!id,
+  });
+
+  const { data: reviews } = useQuery({
+    queryKey: ['reviews', id],
+    queryFn: () => getReviewsByElement(id!),
+    enabled: !!id,
+  });
+
+  const { data: ratingSummary } = useQuery({
+    queryKey: ['ratingSummary', id],
+    queryFn: () => getRatingSummary(id!),
     enabled: !!id,
   });
 
@@ -61,10 +79,9 @@ export default function ElementDetail() {
       endTime,
     });
   }
+
   function handleSelect(info: DateSelectArg) {
     if (info.allDay) {
-      // Use FullCalendar's date-only strings (YYYY-MM-DD) and force UTC midnight,
-      // avoiding local-timezone shift that toISOString() would introduce.
       setStartTime(`${info.startStr}T00:00:00.000Z`);
       setEndTime(`${info.endStr}T00:00:00.000Z`);
     } else {
@@ -75,90 +92,247 @@ export default function ElementDetail() {
     setBookingError(null);
   }
 
-  if (isLoading) return <p className="text-white p-6">Loading...</p>;
-  if (error) return <p className="text-white p-6">Failed to load element.</p>;
-  if (!element) return <p className="text-white p-6">Element not found.</p>;
+  function handleClearSelection() {
+    setStartTime('');
+    setEndTime('');
+    setBookingSuccess(false);
+    setBookingError(null);
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-white">
+        <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
+          <div className="h-4 w-40 animate-pulse rounded bg-slate-100" />
+          <div className="mt-4 h-8 w-64 animate-pulse rounded bg-slate-100" />
+          <div className="mt-8">
+            <CardSkeletonGrid count={2} />
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (error || !element) {
+    return (
+      <div className="min-h-screen bg-white">
+        <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
+          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-6 py-10 text-center">
+            <p className="font-semibold text-rose-700">
+              {error ? "Couldn't load this element" : 'Element not found'}
+            </p>
+            <p className="mt-1 text-sm text-rose-500">
+              {error
+                ? 'Something went wrong on our end — try refreshing the page.'
+                : "This element doesn't exist or may have been removed."}
+            </p>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  const attributeEntries = Object.entries(element.attributes);
+  const unitSuffix =
+    element.bookingUnit === 'Hourly'
+      ? 'per hour'
+      : element.bookingUnit === 'Daily'
+      ? 'per day'
+      : 'per month';
 
   return (
-    <div className="text-white p-6 max-w-lg">
-      <h1 className="text-2xl font-bold mb-1">{element.name}</h1>
-      <p className="text-slate-300 mb-4">${element.price}</p>
+    <div className="min-h-screen bg-white">
+      <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
+        <Link
+          to={`/services/${element.serviceId}`}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-indigo-600"
+        >
+          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M15 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          Back to service
+        </Link>
 
-      <h2 className="text-lg font-semibold mb-2">Details</h2>
-      <ul className="space-y-1 mb-6">
-        {Object.entries(element.attributes).map(([key, value]) => (
-          <li key={key} className="text-slate-300">
-            <span className="text-slate-400">{key}:</span> {value}
-          </li>
-        ))}
-      </ul>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">{element.name}</h1>
+          <StatusBadge isActive={element.isActive} />
+        </div>
 
-      <h2 className="text-lg font-semibold mb-2">Availability</h2>
-      <div
-        className="mb-6 bg-slate-900 border border-slate-800 rounded-xl p-4 fc-dark-theme"
-      >
-        <FullCalendar
-          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-          initialView={element.bookingUnit === 'Hourly' ? 'timeGridWeek' : 'dayGridMonth'}
-          selectable={!!user}
-          select={handleSelect}
-          events={[
-            ...(slots?.map((slot) => ({
-              id: `avail-${slot.id}`,
-              start: slot.startTime,
-              end: slot.endTime,
-              display: 'background',
-              color: '#3b82f6',
-              allDay: element.bookingUnit !== 'Hourly',
-            })) ?? []),
-            ...(bookedRanges?.map((range, i) => ({
-              id: `booked-${i}`,
-              start: range.startTime,
-              end: range.endTime,
-              title: 'Booked',
-              display: 'block',
-              backgroundColor: '#ef4444',
-              borderColor: '#ef4444',
-              textColor: '#ffffff',
-              allDay: element.bookingUnit !== 'Hourly',
-            })) ?? []),
-          ]}
-          height="auto"
-        />
-      </div>
-
-      {user ? (
-        <div className="border-t border-slate-800 pt-4">
-          <h2 className="text-lg font-semibold mb-3">Book this element</h2>
-
-          {startTime && endTime ? (
-            <p className="text-slate-300 text-sm mb-3">
-              Selected: {new Date(startTime).toLocaleString()} — {new Date(endTime).toLocaleString()}
-            </p>
-          ) : (
-            <p className="text-slate-500 text-sm mb-3">Drag on the calendar above to select a time.</p>
-          )}
-
-          <button
-            onClick={handleBook}
-            disabled={bookingMutation.isPending || !startTime || !endTime}
-            className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-medium rounded-lg px-4 py-2"
-          >
-            {bookingMutation.isPending ? 'Booking...' : 'Book'}
-          </button>
-
-          {bookingError && (
-            <p className="text-amber-500 text-sm mt-3">{bookingError}</p>
-          )}
-          {bookingSuccess && (
-            <p className="text-green-400 text-sm mt-3">Booking confirmed!</p>
+        <div className="mt-1 flex flex-wrap items-center gap-3">
+          <p className="text-2xl font-bold text-indigo-600">
+            ${element.price.toFixed(2)}{' '}
+            <span className="text-sm font-normal text-slate-400">{unitSuffix}</span>
+          </p>
+          {ratingSummary && ratingSummary.reviewCount > 0 && (
+            <span className="flex items-center gap-1 text-sm text-slate-600">
+              <span className="text-amber-400">★</span>
+              <span className="font-medium">{ratingSummary.averageRating}</span>
+              <span className="text-slate-400">({ratingSummary.reviewCount})</span>
+            </span>
           )}
         </div>
-      ) : (
-        <p className="text-slate-400 border-t border-slate-800 pt-4">
-          Log in to book this element.
-        </p>
-      )}
+
+        <div className="mt-10 grid gap-10 lg:grid-cols-5">
+          <div className="lg:col-span-2">
+            <div className="flex h-48 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50">
+              <svg className="h-10 w-10 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <rect x="3" y="5" width="18" height="14" rx="2" />
+                <circle cx="8.5" cy="10" r="1.5" />
+                <path d="M21 15l-5-5-4 4-2-2-5 5" />
+              </svg>
+            </div>
+
+            {attributeEntries.length > 0 && (
+              <div className="mt-6">
+                <h2 className="text-sm font-bold uppercase tracking-wide text-slate-900">
+                  Details
+                </h2>
+                <ul className="mt-3 space-y-2.5">
+                  {attributeEntries.map(([key, value]) => (
+                    <li key={key} className="flex items-center gap-2.5 text-sm">
+                      <TagIcon className="h-4 w-4 shrink-0 text-indigo-500" />
+                      <span className="text-slate-400">{key}:</span>
+                      <span className="text-slate-700">{value}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+
+          <div className="lg:col-span-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-bold uppercase tracking-wide text-slate-900">
+                Availability
+              </h2>
+              <div className="flex items-center gap-4 text-xs text-slate-500">
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-full bg-indigo-400" />
+                  Available
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-full bg-rose-500" />
+                  Booked
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4 fc-light-theme">
+              <FullCalendar
+                plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+                initialView={element.bookingUnit === 'Hourly' ? 'timeGridWeek' : 'dayGridMonth'}
+                selectable={!!user}
+                select={handleSelect}
+                events={[
+                  ...(slots?.map((slot) => ({
+                    id: `avail-${slot.id}`,
+                    start: slot.startTime,
+                    end: slot.endTime,
+                    display: 'background',
+                    color: '#818cf8',
+                    allDay: element.bookingUnit !== 'Hourly',
+                  })) ?? []),
+                  ...(bookedRanges?.map((range, i) => ({
+                    id: `booked-${i}`,
+                    start: range.startTime,
+                    end: range.endTime,
+                    title: 'Booked',
+                    display: 'block',
+                    backgroundColor: '#f43f5e',
+                    borderColor: '#f43f5e',
+                    textColor: '#ffffff',
+                    allDay: element.bookingUnit !== 'Hourly',
+                  })) ?? []),
+                ]}
+                height="auto"
+              />
+            </div>
+
+            {user ? (
+              <div className="mt-6 border-t border-slate-200 pt-6">
+                <h2 className="text-sm font-bold uppercase tracking-wide text-slate-900">
+                  Book this element
+                </h2>
+
+                {startTime && endTime ? (
+                  <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-3">
+                    <div className="text-sm">
+                      <p className="font-medium text-indigo-900">Selected time</p>
+                      <p className="text-indigo-600">
+                        {new Date(startTime).toLocaleString()} — {new Date(endTime).toLocaleString()}
+                      </p>
+                    </div>
+                    <button
+                      onClick={handleClearSelection}
+                      className="shrink-0 text-xs font-medium text-indigo-500 hover:text-indigo-700"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                ) : (
+                  <p className="mt-3 text-sm text-slate-500">
+                    Drag on the calendar above to select a time.
+                  </p>
+                )}
+
+                <button
+                  onClick={handleBook}
+                  disabled={bookingMutation.isPending || !startTime || !endTime}
+                  className="mt-4 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  {bookingMutation.isPending ? 'Booking...' : 'Book'}
+                </button>
+
+                {bookingError && (
+                  <p className="mt-3 text-sm text-amber-600">{bookingError}</p>
+                )}
+                {bookingSuccess && (
+                  <p className="mt-3 text-sm text-emerald-600">Booking confirmed!</p>
+                )}
+              </div>
+            ) : (
+              <p className="mt-6 border-t border-slate-200 pt-6 text-sm text-slate-500">
+                <Link to="/login" className="font-medium text-indigo-600 hover:underline">
+                  Log in
+                </Link>{' '}
+                to book this element.
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-12 border-t border-slate-200 pt-8">
+          <h2 className="text-sm font-bold uppercase tracking-wide text-slate-900">
+            Reviews {reviews && reviews.length > 0 && `(${reviews.length})`}
+          </h2>
+
+          {reviews && reviews.length === 0 && (
+            <p className="mt-3 text-sm text-slate-500">No reviews yet.</p>
+          )}
+
+          <ul className="mt-4 space-y-4">
+            {reviews?.map((r) => (
+              <li key={r.id} className="rounded-xl border border-slate-200 p-4">
+                <div className="flex items-center justify-between">
+                  <p className="font-medium text-slate-900">{r.reviewerName}</p>
+                  <span className="text-amber-400 text-sm">
+                    {'★'.repeat(r.rating)}
+                    <span className="text-slate-200">{'★'.repeat(5 - r.rating)}</span>
+                  </span>
+                </div>
+                {r.comment && <p className="mt-1.5 text-sm text-slate-600">{r.comment}</p>}
+                <p className="mt-1.5 text-xs text-slate-400">
+                  {new Date(r.createdAt).toLocaleDateString()}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      <Footer />
     </div>
   );
 }

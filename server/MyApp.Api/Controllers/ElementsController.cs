@@ -32,10 +32,15 @@ public class ElementsController : ControllerBase
             query = query.Where(e => e.ServiceId == serviceId.Value);
         }
 
-        var elements = await query
+        var elementEntities = await query
             .OrderBy(e => e.OrderIndex)
-            .Select(e => MapToResponse(e))
             .ToListAsync();
+
+        var elements = new List<ElementResponse>();
+        foreach (var e in elementEntities)
+        {
+            elements.Add(await MapToResponseAsync(e));
+        }
 
         return Ok(elements);
     }
@@ -60,7 +65,7 @@ public class ElementsController : ControllerBase
             return NotFound(new { message = "Element not found." });
         }
 
-        return Ok(MapToResponse(element));
+        return Ok(await MapToResponseAsync(element));
     }
     [Authorize(Roles = "Provider,Admin")]
     [HttpPost]
@@ -89,7 +94,7 @@ public class ElementsController : ControllerBase
         _context.Elements.Add(element);
         await _context.SaveChangesAsync();
         await _context.Entry(element).Reference(e => e.Service).LoadAsync();
-        return CreatedAtAction(nameof(GetById), new { id = element.Id }, MapToResponse(element));
+        return CreatedAtAction(nameof(GetById), new { id = element.Id }, await MapToResponseAsync(element));
     }
 
     [Authorize(Roles = "Provider,Admin")]
@@ -117,7 +122,7 @@ public class ElementsController : ControllerBase
 
         await _context.SaveChangesAsync();
 
-        return Ok(MapToResponse(element));
+        return Ok(await MapToResponseAsync(element));
     }
 
 
@@ -144,7 +149,7 @@ public class ElementsController : ControllerBase
         element.IsActive = !element.IsActive;
         await _context.SaveChangesAsync();
 
-        return Ok(MapToResponse(element));
+        return Ok(await MapToResponseAsync(element));
     }
 
     [Authorize(Roles = "Provider,Admin")]
@@ -216,15 +221,25 @@ public class ElementsController : ControllerBase
 
         return currentUserId == ownerProviderId;
     }
-    private static ElementResponse MapToResponse(Element e) => new()
+    private async Task<ElementResponse> MapToResponseAsync(Element e)
     {
-        Id = e.Id,
-        ServiceId = e.ServiceId,
-        Name = e.Name,
-        OrderIndex = e.OrderIndex,
-        Price = e.Price,
-        Attributes = e.Attributes,
-        BookingUnit = e.Service.BookingUnit,
-        IsActive = e.IsActive,
-    };
+        var ratings = await _context.Reviews
+            .Where(r => r.ElementId == e.Id)
+            .Select(r => r.Rating)
+            .ToListAsync();
+
+        return new ElementResponse
+        {
+            Id = e.Id,
+            ServiceId = e.ServiceId,
+            Name = e.Name,
+            OrderIndex = e.OrderIndex,
+            Price = e.Price,
+            Attributes = e.Attributes,
+            BookingUnit = e.Service.BookingUnit,
+            IsActive = e.IsActive,
+            AverageRating = ratings.Count > 0 ? Math.Round(ratings.Average(), 1) : 0,
+            ReviewCount = ratings.Count
+        };
+    }
 }

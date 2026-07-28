@@ -12,4 +12,6 @@ public class ElementResponse
     public Dictionary<string, string> Attributes { get; set; } = new();
     public BookingUnit BookingUnit { get; set; }
     public bool IsActive { get; set; }
+    public double AverageRating { get; set; }
+    public int ReviewCount { get; set; }
 }

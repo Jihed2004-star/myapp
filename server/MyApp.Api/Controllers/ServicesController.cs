@@ -249,10 +249,13 @@ public class ServicesController : ControllerBase
         Elements = s.Elements.Select(e => new ElementResponse
         {
             Id = e.Id,
+            ServiceId = e.ServiceId,
             Name = e.Name,
             OrderIndex = e.OrderIndex,
-            Price = e.Price
-            
+            Price = e.Price,
+            Attributes = e.Attributes,
+            BookingUnit = s.BookingUnit,
+            IsActive = e.IsActive
         }).ToList()
     };
 }

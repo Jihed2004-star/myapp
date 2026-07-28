@@ -159,8 +159,6 @@ public class AvailabilityController : ControllerBase
         });
     }
 
-
-
     [Authorize(Roles = "Provider,Admin")]
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id)
@@ -177,6 +175,27 @@ public class AvailabilityController : ControllerBase
         if (!IsOwnerOrAdmin(availability.Element.Service.ProviderId))
         {
             return Forbid();
+        }
+
+        var conflicts = await _context.Bookings
+            .Where(b => b.ElementId == availability.ElementId
+                     && b.Status == "Confirmed"
+                     && b.TimeRange.Overlaps(availability.TimeRange))
+            .Select(b => new BookingConflictDto
+            {
+                BookingId = b.Id,
+                StartTime = b.TimeRange.LowerBound,
+                EndTime = b.TimeRange.UpperBound
+            })
+            .ToListAsync();
+
+        if (conflicts.Count > 0)
+        {
+            return Conflict(new
+            {
+                message = "This slot has confirmed bookings and can't be deleted.",
+                conflictingBookings = conflicts
+            });
         }
 
         _context.Availabilities.Remove(availability);

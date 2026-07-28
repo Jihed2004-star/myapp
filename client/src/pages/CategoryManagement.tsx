@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createCategory, updateCategory, deleteCategory, getAllCategoriesAdmin, toggleCategoryActive } from '../api/catalog';
 import { useAuth } from '../context/AuthContext';
+import { StatusBadge } from '../components/ui/Badge';
+import { ListRowSkeletonGroup } from '../components/ui/ListRowSkeleton';
+import Footer from '../components/Footer';
 
 export default function CategoryManagement() {
   const { user } = useAuth();
@@ -75,107 +78,137 @@ export default function CategoryManagement() {
     }
   }
 
-  if (!user || user.role !== 'Admin') {
-    return <div className="text-white p-6"><p className="text-slate-400">You don't have access to this page.</p></div>;
-  }
+  const inputClass =
+    'w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100';
+  const labelClass = 'mb-1 block text-sm font-medium text-slate-700';
 
-  if (isLoading) return <p className="text-white p-6">Loading...</p>;
-  if (error) return <p className="text-white p-6">Failed to load categories.</p>;
+  if (!user || user.role !== 'Admin') {
+    return (
+      <div className="min-h-screen bg-white">
+        <div className="mx-auto max-w-2xl px-4 py-16 text-center sm:px-6">
+          <p className="text-slate-500">You don't have access to this page.</p>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   const isPending = createMutation.isPending || updateMutation.isPending;
 
   return (
-    <div className="text-white p-6 max-w-2xl">
-      <h1 className="text-2xl font-bold mb-6">Category Management</h1>
+    <div className="min-h-screen bg-white">
+      <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6">
+        <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">Category Management</h1>
 
-      <div className="bg-slate-900 border border-slate-800 rounded-lg p-4 mb-6">
-        <h2 className="text-lg font-semibold mb-3">{editingId ? 'Edit Category' : 'New Category'}</h2>
+        <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+          <h2 className="text-lg font-bold text-slate-900">
+            {editingId ? 'Edit Category' : 'New Category'}
+          </h2>
 
-        <label className="block text-sm text-slate-400 mb-1">Name</label>
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="w-full bg-slate-800/50 border border-slate-800 rounded-lg px-3 py-2 text-sm mb-3"
-        />
+          <label className={`${labelClass} mt-4`}>Name</label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className={`${inputClass} mb-3`}
+          />
 
-        <label className="block text-sm text-slate-400 mb-1">Description</label>
-        <textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          className="w-full bg-slate-800/50 border border-slate-800 rounded-lg px-3 py-2 text-sm mb-4"
-          rows={2}
-        />
+          <label className={labelClass}>Description</label>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            className={`${inputClass} mb-4`}
+            rows={2}
+          />
 
-        <div className="flex gap-2">
-          <button
-            onClick={handleSubmit}
-            disabled={isPending}
-            className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-medium rounded-lg px-4 py-2"
-          >
-            {isPending ? 'Saving...' : editingId ? 'Update' : 'Create'}
-          </button>
-          {editingId && (
+          <div className="flex gap-2">
             <button
-              onClick={resetForm}
-              className="text-sm text-slate-400 hover:text-white px-4 py-2"
+              onClick={handleSubmit}
+              disabled={isPending}
+              className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
             >
-              Cancel
+              {isPending ? 'Saving...' : editingId ? 'Update' : 'Create'}
             </button>
-          )}
+            {editingId && (
+              <button
+                onClick={resetForm}
+                className="rounded-xl px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-900"
+              >
+                Cancel
+              </button>
+            )}
+          </div>
+
+          {formError && <p className="mt-3 text-sm text-amber-600">{formError}</p>}
         </div>
 
-        {formError && <p className="text-amber-500 text-sm mt-3">{formError}</p>}
+        {deleteError && <p className="mt-4 text-sm text-amber-600">{deleteError}</p>}
+
+        <div className="mt-6">
+          {isLoading && <ListRowSkeletonGroup count={4} />}
+
+          {error && (
+            <div className="rounded-2xl border border-rose-200 bg-rose-50 px-6 py-10 text-center">
+              <p className="font-semibold text-rose-700">Couldn't load categories</p>
+              <p className="mt-1 text-sm text-rose-500">
+                Something went wrong on our end — try refreshing the page.
+              </p>
+            </div>
+          )}
+
+          {!isLoading && !error && categories?.length === 0 && (
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-6 py-16 text-center">
+              <p className="font-semibold text-slate-900">No categories yet</p>
+              <p className="mt-1 text-sm text-slate-500">Create one above to get started.</p>
+            </div>
+          )}
+
+          {!isLoading && !error && categories && categories.length > 0 && (
+            <ul className="space-y-3">
+              {categories.map((cat) => (
+                <li
+                  key={cat.id}
+                  className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+                >
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-slate-900">{cat.name}</p>
+                      <StatusBadge isActive={cat.isActive} />
+                    </div>
+                    {cat.description && (
+                      <p className="mt-0.5 text-sm text-slate-500">{cat.description}</p>
+                    )}
+                  </div>
+                  <div className="flex shrink-0 items-center gap-3">
+                    <button
+                      onClick={() => startEdit(cat)}
+                      className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => toggleMutation.mutate(cat.id)}
+                      disabled={toggleMutation.isPending}
+                      className="text-sm font-medium text-slate-500 hover:text-slate-900 disabled:opacity-50"
+                    >
+                      {cat.isActive ? 'Deactivate' : 'Activate'}
+                    </button>
+                    <button
+                      onClick={() => deleteMutation.mutate(cat.id)}
+                      disabled={deleteMutation.isPending}
+                      className="text-sm font-medium text-rose-600 hover:text-rose-700 disabled:opacity-50"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
 
-      {deleteError && <p className="text-amber-500 text-sm mb-4">{deleteError}</p>}
-
-      <ul className="space-y-2">
-        {categories?.map((cat) => (
-          <li
-            key={cat.id}
-            className="bg-slate-900 border border-slate-800 rounded-lg p-4 flex justify-between items-center"
-          >
-            <div>
-              <div className="flex items-center gap-2">
-                <p className="font-semibold">{cat.name}</p>
-                <span
-                  className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                    cat.isActive
-                      ? 'bg-green-900/50 text-green-300'
-                      : 'bg-slate-800 text-slate-400'
-                  }`}
-                >
-                  {cat.isActive ? 'Active' : 'Inactive'}
-                </span>
-              </div>
-              {cat.description && <p className="text-slate-400 text-sm">{cat.description}</p>}
-            </div>
-            <div className="flex gap-3 items-center">
-              <button
-                onClick={() => startEdit(cat)}
-                className="text-sm text-blue-400 hover:text-blue-300"
-              >
-                Edit
-              </button>
-              <button
-                onClick={() => toggleMutation.mutate(cat.id)}
-                disabled={toggleMutation.isPending}
-                className="text-sm text-slate-400 hover:text-white disabled:opacity-50"
-              >
-                {cat.isActive ? 'Deactivate' : 'Activate'}
-              </button>
-              <button
-                onClick={() => deleteMutation.mutate(cat.id)}
-                disabled={deleteMutation.isPending}
-                className="text-sm text-red-400 hover:text-red-300 disabled:opacity-50"
-              >
-                Delete
-              </button>
-            </div>
-          </li>
-        ))}
-      </ul>
+      <Footer />
     </div>
   );
 }

@@ -100,7 +100,13 @@ public class BookingsController : ControllerBase
             .OrderByDescending(b => b.CreatedAt)
             .ToListAsync();
 
-        return Ok(bookings.Select(b => MapToResponse(b, b.Element)).ToList());
+        var bookingIds = bookings.Select(b => b.Id).ToList();
+        var reviewedIds = await _context.Reviews
+            .Where(r => bookingIds.Contains(r.BookingId))
+            .Select(r => r.BookingId)
+            .ToListAsync();
+
+        return Ok(bookings.Select(b => MapToResponse(b, b.Element, reviewedIds.Contains(b.Id))).ToList());
     }
 
     [AllowAnonymous]
@@ -139,11 +145,12 @@ public class BookingsController : ControllerBase
 
         var bookings = await _context.Bookings
             .Include(b => b.Element).ThenInclude(e => e.Service)
+            .Include(b => b.User)
             .Where(b => b.ElementId == elementId)
             .OrderByDescending(b => b.TimeRange)
             .ToListAsync();
 
-        return Ok(bookings.Select(b => MapToResponse(b, b.Element)).ToList());
+        return Ok(bookings.Select(b => MapToResponse(b, b.Element, clientName: b.User.FullName)).ToList());
     }
 
 
@@ -189,6 +196,11 @@ public class BookingsController : ControllerBase
             return BadRequest(new { message = $"Booking is already {booking.Status}, cannot cancel." });
         }
 
+        if (booking.TimeRange.LowerBound <= DateTime.UtcNow)
+        {
+            return BadRequest(new { message = "This booking has already started or ended and can no longer be cancelled." });
+        }
+
         booking.Status = "Cancelled";
         await _context.SaveChangesAsync();
 
@@ -223,7 +235,7 @@ public class BookingsController : ControllerBase
         return ex.InnerException is Npgsql.PostgresException pgEx && pgEx.SqlState == "23P01";
     }
 
-    private static BookingResponse MapToResponse(Booking b, Element element) => new()
+    private static BookingResponse MapToResponse(Booking b, Element element, bool hasReview = false, string clientName = "") => new()
     {
         Id = b.Id,
         ElementId = b.ElementId,
@@ -231,7 +243,19 @@ public class BookingsController : ControllerBase
         ServiceName = element.Service.Name,
         StartTime = b.TimeRange.LowerBound,
         EndTime = b.TimeRange.UpperBound,
-        Status = b.Status,
-        CreatedAt = b.CreatedAt
+        Status = ComputeEffectiveStatus(b),
+        CreatedAt = b.CreatedAt,
+        HasReview = hasReview,
+        ClientName = clientName
     };
+
+    private static string ComputeEffectiveStatus(Booking b)
+    {
+        if (b.Status == "Cancelled")
+        {
+            return "Cancelled";
+        }
+
+        return b.TimeRange.UpperBound < DateTime.UtcNow ? "Completed" : b.Status;
+    }
 }

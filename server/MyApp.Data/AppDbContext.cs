@@ -13,6 +13,7 @@ public class AppDbContext : DbContext
 
     public DbSet<Availability> Availabilities => Set<Availability>();    public DbSet<User> Users => Set<User>();
     public DbSet<Category> Categories => Set<Category>();
+    public DbSet<Review> Reviews => Set<Review>();
     public DbSet<Service> Services => Set<Service>();
     public DbSet<Element> Elements => Set<Element>();
     public DbSet<Booking> Bookings => Set<Booking>();
@@ -21,6 +22,30 @@ public class AppDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
+        modelBuilder.Entity<Review>()
+            .HasOne(r => r.Booking)
+            .WithMany()
+            .HasForeignKey(r => r.BookingId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Review>()
+            .HasOne(r => r.Element)
+            .WithMany()
+            .HasForeignKey(r => r.ElementId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Review>()
+            .HasOne(r => r.User)
+            .WithMany()
+            .HasForeignKey(r => r.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // One review per booking — enforced at the database level
+        modelBuilder.Entity<Review>()
+            .HasIndex(r => r.BookingId)
+            .IsUnique();
+        
+        
 
         modelBuilder.Entity<Service>()
             .Property(s => s.BookingUnit)

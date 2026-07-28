@@ -1,5 +1,102 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useRef, useEffect } from 'react';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { LogoMark } from './ui/LogoMark';
+
+function navLinkClass(isActive: boolean) {
+  return `rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+    isActive
+      ? 'bg-indigo-50 text-indigo-600'
+      : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+  }`;
+}
+
+const ROLE_STYLES: Record<string, string> = {
+  Admin: 'bg-rose-50 text-rose-600',
+  Provider: 'bg-indigo-50 text-indigo-600',
+  Customer: 'bg-slate-100 text-slate-600',
+};
+
+interface ManageLink {
+  to: string;
+  label: string;
+}
+
+function ManageDropdown({ links }: { links: ManageLink[] }) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  function scheduleClose() {
+    closeTimer.current = setTimeout(() => setOpen(false), 200);
+  }
+
+  function cancelClose() {
+    if (closeTimer.current) {
+      clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+  }
+
+  return (
+    <div
+      ref={containerRef}
+      className="relative"
+      onMouseEnter={() => {
+        cancelClose();
+        setOpen(true);
+      }}
+      onMouseLeave={scheduleClose}
+    >
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-medium text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900"
+      >
+        Manage
+        <svg
+          viewBox="0 0 24 24"
+          className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
+          <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-full w-48 pt-1">
+          <div className="rounded-xl border border-slate-200 bg-white py-1.5 shadow-lg">
+            {links.map((link) => (
+              <NavLink
+                key={link.to}
+                to={link.to}
+                onClick={() => setOpen(false)}
+                className={({ isActive }) =>
+                  `block px-4 py-2 text-sm font-medium transition-colors ${
+                    isActive ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                  }`
+                }
+              >
+                {link.label}
+              </NavLink>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -10,63 +107,74 @@ export default function Navbar() {
     navigate('/');
   }
 
+  const manageLinks: ManageLink[] = [];
+  if (user && (user.role === 'Provider' || user.role === 'Admin')) {
+    manageLinks.push({ to: '/provider/dashboard', label: 'My Services' });
+  }
+  if (user && user.role === 'Admin') {
+    manageLinks.push({ to: '/admin/users', label: 'Manage Users' });
+    manageLinks.push({ to: '/admin/categories', label: 'Manage Categories' });
+  }
+
   return (
-    <nav className="border-b border-slate-800 bg-slate-900/95 px-4 py-3 sm:px-6">
-      <div className="mx-auto flex flex-wrap items-center justify-between gap-3">
-        <Link to="/Categories" className="text-sm font-semibold text-white transition-colors hover:text-blue-400">
-          MyApp
+    <nav className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur sm:px-6">
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
+        <Link
+          to="/Categories"
+          className="flex items-center gap-2 text-base font-bold text-slate-900 transition-colors hover:text-indigo-600"
+        >
+          <LogoMark />
+          Reservo
         </Link>
 
-        <div className="flex flex-wrap items-center gap-3 text-sm">
-          <Link to="/Categories" className="text-slate-400 transition-colors hover:text-white">
+        <div className="flex flex-wrap items-center gap-1">
+          <NavLink to="/" className={({ isActive }) => navLinkClass(isActive)}>
             Home
-          </Link>
-          
+          </NavLink>
+          <NavLink to="/Categories" className={({ isActive }) => navLinkClass(isActive)}>
+            Categories
+          </NavLink>
 
-            {user && (
-            <Link to="/my-bookings" className="text-slate-400 transition-colors hover:text-white">
+          {user && (
+            <NavLink to="/my-bookings" className={({ isActive }) => navLinkClass(isActive)}>
               My Bookings
-            </Link>
-          )}
-          {user && (user.role === 'Provider' || user.role === 'Admin') && (
-            <Link to="/provider/dashboard" className="text-slate-400 transition-colors hover:text-white">
-              Dashboard
-            </Link>
-          )}
-          {user && user.role === 'Admin' && (
-            <>
-              <Link to="/admin/users" className="text-slate-400 transition-colors hover:text-white">
-                Users
-              </Link>
-              <Link to="/admin/categories" className="text-slate-400 transition-colors hover:text-white">
-                Categories
-              </Link>
-            </>
+            </NavLink>
           )}
 
+          {manageLinks.length > 0 && <ManageDropdown links={manageLinks} />}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 text-sm">
           {user ? (
             <>
-              <span className="text-slate-400">
-                Hi, <span className="text-white">{user.fullName}</span>
+              <span className="text-slate-500">
+                Hi, <span className="font-medium text-slate-900">{user.fullName}</span>
               </span>
-              <span className="rounded-full bg-blue-500/10 px-2 py-0.5 text-xs text-blue-400">
+              <span
+                className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                  ROLE_STYLES[user.role] ?? 'bg-slate-100 text-slate-600'
+                }`}
+              >
                 {user.role}
               </span>
               <button
                 onClick={handleLogout}
-                className="text-slate-400 transition-colors hover:text-white"
+                className="rounded-lg px-3 py-1.5 font-medium text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900"
               >
                 Logout
               </button>
             </>
           ) : (
             <>
-              <Link to="/login" className="text-slate-400 transition-colors hover:text-white">
+              <Link
+                to="/login"
+                className="rounded-lg px-3 py-1.5 font-medium text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900"
+              >
                 Login
               </Link>
               <Link
                 to="/register"
-                className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-500"
+                className="rounded-lg bg-indigo-600 px-3.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-indigo-700"
               >
                 Register
               </Link>
