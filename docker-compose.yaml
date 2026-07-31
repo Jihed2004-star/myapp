@@ -1,0 +1,55 @@
+version: '3'
+
+services:
+  postgres:
+    container_name: postgres
+    image: postgres
+    environment:
+      POSTGRES_PASSWORD: pass
+      POSTGRES_USER: user
+      POSTGRES_DB: myapp
+    ports:
+      - 5433:5432
+    volumes:
+      - .server/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - myvol:/var/lib/postgresql
+  api:
+    depends_on:
+      - postgres
+    container_name: dotnet
+    build: 
+        context: ./server
+        dockerfile: Dockerfile
+    ports:
+      - 8000:8080
+    environment:
+      - Jwt__Secret=U856JZ1QSrql0bH7H6WfkTGj+zez4gePlspoPQH0KxM=
+      - Jwt__Issuer=MyApp
+      - Jwt__ExpiryMinutes=1440
+      - ConnectionStrings__Default=Host=postgres;Database=myapp;Username=user;Password=pass
+
+  client:
+    depends_on:
+      - api
+    container_name: reactvite
+    build:
+       context: ./client
+       dockerfile: Dockerfile
+       args:
+          VITE_API_URL: http://localhost:8000/api
+    ports:
+      - 1234:80
+    
+  adminer:
+    image: adminer
+    depends_on:
+      - postgres
+    restart: always
+    ports:
+      - 8080:8080
+
+
+    
+volumes:
+  myvol:
+
