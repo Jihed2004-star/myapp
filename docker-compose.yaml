@@ -11,12 +11,18 @@ services:
     ports:
       - 5433:5432
     volumes:
-      - .server/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./server/init.sql:/docker-entrypoint-initdb.d/init.sql
       - myvol:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d myapp"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
   api:
     depends_on:
-      - postgres
-    container_name: dotnet
+      postgres:
+        condition: service_healthy
+    container_name: reservoback
     build: 
         context: ./server
         dockerfile: Dockerfile
@@ -31,7 +37,7 @@ services:
   client:
     depends_on:
       - api
-    container_name: reactvite
+    container_name: reservofront
     build:
        context: ./client
        dockerfile: Dockerfile

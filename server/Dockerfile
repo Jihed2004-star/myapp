@@ -23,7 +23,7 @@ WORKDIR /src/app/runapp
 
 COPY --from=builder /app/publish .
 
-EXPOSE 8000
+EXPOSE 8080
 
 CMD ["dotnet","MyApp.Api.dll" ]
 
